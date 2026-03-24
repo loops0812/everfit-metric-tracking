@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { MetricType } from 'src/common/enum/metric-type.enum';
+import { MetricType } from 'src/commons/enums/metric-type.enum';
 
 export type MetricDocument = HydratedDocument<Metric>;
 

@@ -1,11 +1,13 @@
-import { TemperatureUnit } from 'src/common/enum/temperature-unit.enum';
+import { Injectable } from '@nestjs/common';
+import { TemperatureUnit } from 'src/commons/enums/temperature-unit.enum';
 import { IUnitConverter } from './types/unit-converter.interface';
-import { UnsupportedTemperatureUnitError } from 'src/common/errors';
+import { UnsupportedTemperatureUnitError } from 'src/commons/errors';
 
 /**
  * Temperature conversion utilities.
  * All conversions go through Celsius as the base unit.
  */
+@Injectable()
 export class TemperatureConverter implements IUnitConverter<TemperatureUnit> {
   toBase(value: number, unit: TemperatureUnit): number {
     switch (unit) {

@@ -1,9 +1,9 @@
 import { TemperatureConverter } from '../../src/metrics/converters/temperature.converter';
-import { TemperatureUnit } from '../../src/common/enum/temperature-unit.enum';
+import { TemperatureUnit } from '../../src/commons/enums/temperature-unit.enum';
 import {
   CONVERTER_ERRORS,
   UnsupportedTemperatureUnitError,
-} from '../../src/common/errors';
+} from '../../src/commons/errors';
 
 const converter = new TemperatureConverter();
 

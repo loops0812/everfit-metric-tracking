@@ -1,14 +1,16 @@
-import { DistanceUnit } from 'src/common/enum/distance-unit.enum';
+import { Injectable } from '@nestjs/common';
+import { DistanceUnit } from 'src/commons/enums/distance-unit.enum';
 import { IUnitConverter } from './types/unit-converter.interface';
 import {
   NegativeDistanceError,
   UnsupportedDistanceUnitError,
-} from 'src/common/errors';
+} from 'src/commons/errors';
 
 /**
  * Distance conversion utilities.
  * All conversions go through meters as the base unit.
  */
+@Injectable()
 export class DistanceConverter implements IUnitConverter<DistanceUnit> {
   private static readonly TO_METERS: Record<DistanceUnit, number> = {
     [DistanceUnit.METER]: 1,

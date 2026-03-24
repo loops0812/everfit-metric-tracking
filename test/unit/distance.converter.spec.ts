@@ -1,10 +1,10 @@
 import { DistanceConverter } from '../../src/metrics/converters/distance.converter';
-import { DistanceUnit } from '../../src/common/enum/distance-unit.enum';
+import { DistanceUnit } from '../../src/commons/enums/distance-unit.enum';
 import {
   CONVERTER_ERRORS,
   NegativeDistanceError,
   UnsupportedDistanceUnitError,
-} from '../../src/common/errors';
+} from '../../src/commons/errors';
 
 const converter = new DistanceConverter();
 
