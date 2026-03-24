@@ -8,7 +8,7 @@ import { ConfigType } from "@nestjs/config/dist/types/config.type";
         MongooseModule.forRootAsync({
             useFactory: (mongoDbConfiguration: ConfigType<typeof mongoDbConfig>) => ({
                 uri: mongoDbConfiguration.uri,
-                dbName: mongoDbConfiguration.dbName,
+                dbName: mongoDbConfiguration.dbName,                
             }),
             inject: [mongoDbConfig.KEY],
         }),

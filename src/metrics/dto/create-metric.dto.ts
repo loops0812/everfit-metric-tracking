@@ -37,6 +37,7 @@ export class CreateMetricDto {
     example: 'meter',
     description: 'Distance: meter, centimeter, inch, feet, yard | Temperature: C, F, K',
   })
+  @IsEnum(ALL_UNITS, { message: `Unit must be one of: ${ALL_UNITS.join(', ')}` })
   @IsString()
   @IsNotEmpty()
   unit: string;

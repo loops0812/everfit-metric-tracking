@@ -1,40 +1,40 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AppModule } from './app.module';
 import { AppConfig, APP_CONFIG_KEY } from './configs/app/app.config';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { Logger } from '@nestjs/common';
+import { setupSwagger } from './configs/swagger/swagger.config';
+import { ResponseInterceptor } from './interceptors/response.interceptor';
+import { GlobalExceptionFilter } from './filter/global-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
-  const configService = app.get(ConfigService);
-  const appConfiguration = configService.get(APP_CONFIG_KEY) as AppConfig;
+  const config = app.get(ConfigService).get<AppConfig>(APP_CONFIG_KEY)!;
 
-  logger.log(`${appConfiguration.appName} v${appConfiguration.appVersion} is starting...`);
-  
-  // swagger setup
-  const { swaggerTitle, swaggerDescription, swaggerPrefix, swaggerEnabled } = appConfiguration;
+  logger.log(`${config.appName} v${config.appVersion} is starting...`);
 
-  if (swaggerEnabled) {
-    const config = new DocumentBuilder()
-      .setTitle(swaggerTitle)
-      .setDescription(swaggerDescription)
-      .setVersion(appConfiguration.appVersion)
-      .build();
+  app.setGlobalPrefix(config.apiPrefix);
 
-    const document = SwaggerModule.createDocument(app, config, {
-      ignoreGlobalPrefix: false, // Include global prefix in Swagger paths
-    });
-    SwaggerModule.setup(swaggerPrefix, app, document);
+  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
-    logger.log(`Swagger is enabled at http://localhost:${appConfiguration.port}/${swaggerPrefix}`);
-  } else {
-    logger.log('Swagger is disabled');
-  }
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      
+    }),
+  );
 
-  await app.listen(appConfiguration.port, () => {
-    logger.log(`Server is running on http://localhost:${appConfiguration.port}`);
+  app.enableCors();
+  app.enableShutdownHooks();
+
+  setupSwagger(app, config);
+
+  await app.listen(config.port, () => {
+    logger.log(`Server is running on http://localhost:${config.port}/${config.apiPrefix}`);
   });
 }
 bootstrap();

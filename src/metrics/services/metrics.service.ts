@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Metric, MetricDocument } from '../schemas/metric.schema';
@@ -53,9 +53,7 @@ export class MetricsService implements IMetricsService {
   private validateUnit(type: MetricType, unit: string): void {
     const valid = this.getValidUnits(type);
     if (!valid.includes(unit)) {
-      throw new BadRequestException(
-        `Invalid unit "${unit}" for type "${type}". Valid units: ${valid.join(', ')}`,
-      );
+      throw new BadRequestException(`Invalid unit '${unit}' for metric type '${type}'. Valid units: ${valid.join(', ')}`);
     }
   }
 }
