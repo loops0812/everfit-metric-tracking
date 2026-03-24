@@ -82,5 +82,15 @@
     ],
     "coverageDirectory": "coverage",
     "testEnvironment": "node"
+  },
+  "pnpm": {
+    "overrides": {
+      "@nestjs/common": "^11.0.1"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "class-validator": "0.15"
+      }
+    }
   }
 }
