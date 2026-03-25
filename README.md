@@ -11,6 +11,7 @@ A RESTful API for tracking health & fitness metrics (distance and temperature) w
 - [API Reference](#api-reference)
 - [Testing](#testing)
 - [Design Decisions](#design-decisions)
+- [Trade-Offs](./TRADE_OFFS.md)
 - [Project Structure](#project-structure)
 
 ---
