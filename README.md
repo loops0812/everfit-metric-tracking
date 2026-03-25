@@ -1,6 +1,6 @@
 # Everfit Metric Tracking API
 
-A RESTful API for tracking health & fitness metrics (distance and temperature) with unit conversion support. Built with **NestJS**, **MongoDB**, and **TypeScript**.
+A RESTful API for tracking health & fitness metrics (distance and temperature) with automatic unit conversion. Built with **NestJS**, **MongoDB**, and **TypeScript**.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ A RESTful API for tracking health & fitness metrics (distance and temperature) w
 
 - **Create metrics** — Record distance or temperature with any supported unit
 - **List metrics** — Query by user and type with optional unit conversion and pagination
-- **Chart data** — Aggregate latest-per-day values over a time period for charting
+- **Chart data** — Pre-computed daily snapshots for instant chart rendering (~5ms vs ~1-2s aggregation)
 - **Unit conversion** — Automatic base-value normalization; query in any unit regardless of how data was stored
 - **Validation** — Request validation via class-validator with structured error responses
 - **Swagger** — Interactive API docs at `/api-docs`
@@ -33,7 +33,7 @@ A RESTful API for tracking health & fitness metrics (distance and temperature) w
 | Framework | NestJS 11 |
 | Database | MongoDB 7 (Mongoose ODM) |
 | Validation | class-validator + class-transformer |
-| Docs | Swagger (OpenAPI) |
+| Docs | Swagger (OpenAPI 3.0) |
 | Testing | Jest + Supertest |
 | Container | Docker + Docker Compose |
 | Package Manager | pnpm |
@@ -41,30 +41,34 @@ A RESTful API for tracking health & fitness metrics (distance and temperature) w
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────┐
-│                    Controller Layer                    │
+┌───────────────────────────────────────────────────────┐
+│                    Controller Layer                   │
 │  MetricsController (POST, GET /metrics, GET /chart)   │
-├──────────────────────────────────────────────────────┤
-│                    Service Layer                      │
+├───────────────────────────────────────────────────────┤
+│                     Service Layer                     │
 │  MetricsService (IMetricsService)                     │
-│  ├── DistanceConverter (IUnitConverter<DistanceUnit>)  │
-│  └── TemperatureConverter (IUnitConverter<TempUnit>)   │
-├──────────────────────────────────────────────────────┤
-│                   Repository Layer                     │
+│  ├── DistanceConverter  (IUnitConverter<DistanceUnit>)│
+│  └── TemperatureConverter (IUnitConverter<TempUnit>)  │
+├───────────────────────────────────────────────────────┤
+│                   Repository Layer                    │
 │  MetricsRepository (IMetricsRepository)               │
-│  └── create, findWithCount, aggregateLatestPerDay     │
-├──────────────────────────────────────────────────────┤
-│                    Data Layer                          │
-│  MongoDB  ←  Mongoose (Metric Schema)                 │
-│  Compound index: { userId, type, date }               │
-└──────────────────────────────────────────────────────┘
+│  └── create, findWithCount                            │
+│  DailyMetricRepository (IDailyMetricRepository)       │
+│  └── upsertDaily, findByRange                         │
+├───────────────────────────────────────────────────────┤
+│                     Data Layer                        │
+│  MongoDB                                              │
+│  ├── metrics   — raw entries, index {userId,type,date}│
+│  └── dailymetrics — pre-computed per-day snapshots    │
+└───────────────────────────────────────────────────────┘
 ```
 
 **Key patterns:**
-- **Interface-driven DI** — Services, repositories, and converters are injected via Symbol tokens with interfaces (`IMetricsService`, `IMetricsRepository`, `IUnitConverter<T>`)
-- **Repository pattern** — All Mongoose data access (queries, aggregation) is encapsulated in `MetricsRepository`, keeping the service focused on business logic (validation, conversion)
-- **Base-value normalization** — All metrics are stored with both the original value/unit and a `baseValue` (meters for distance, °C for temperature), enabling efficient querying and conversion
-- **Strategy pattern** — Converters are registered in a `Map<MetricType, IUnitConverter>` for extensibility
+- **Interface-driven DI** — Services, repositories, and converters are injected via Symbol tokens (`IMetricsService`, `IMetricsRepository`, `IDailyMetricRepository`, `IUnitConverter<T>`)
+- **Repository pattern** — All Mongoose data access is encapsulated in repositories, keeping the service focused on business logic
+- **Write-time materialization** — On every metric insert, a `DailyMetric` record is upserted (latest-per-day wins), making chart reads a simple indexed `find()` instead of expensive aggregation
+- **Base-value normalization** — All metrics store both original value/unit and a `baseValue` (meters / °C), enabling efficient querying and conversion
+- **Strategy pattern** — Unit converters registered in a `Map<MetricType, IUnitConverter>` for extensibility
 
 ## Getting Started
 
@@ -191,14 +195,14 @@ GET /api/metrics?userId=user-1&type=distance&unit=meter&page=1&limit=20
 GET /api/metrics/chart?userId=user-1&type=distance&period=1m&unit=meter
 ```
 
-Returns the **latest metric value per day** within the specified period — designed for chart visualization.
+Returns the **latest metric value per day** within the specified period — optimized via pre-computed daily snapshots.
 
 | Param | Type | Required | Notes |
 |-------|------|----------|-------|
 | `userId` | string | ✅ | |
 | `type` | enum | ✅ | `distance` or `temperature` |
 | `period` | string | ✅ | Format: `<n><w\|m\|y>` (e.g., `1w`, `1m`, `3m`, `1y`) |
-| `unit` | string | ❌ | Target unit; defaults to base unit (meter/°C) |
+| `unit` | string | ❌ | Target unit; defaults to base unit (meter / °C) |
 
 **Response:**
 ```json
@@ -248,7 +252,7 @@ pnpm test:cov
 | TemperatureConverter | 16 | C↔F↔K conversions, edge cases, unsupported units |
 | POST /metrics | 9 | Create, validation, negative distance, invalid types/units |
 | GET /metrics | 7 | Filtering, unit conversion, pagination, validation |
-| GET /metrics/chart | 8 | Daily aggregation, latest-per-day, period filtering, conversion |
+| GET /metrics/chart | 8 | Daily snapshots, latest-per-day, period filtering, conversion |
 
 ---
 
@@ -258,13 +262,13 @@ pnpm test:cov
 Every metric is stored with its original `value`/`unit` AND a computed `baseValue` (meters or °C). This enables:
 - Efficient queries without runtime conversion
 - Converting to any unit on read via `fromBase(baseValue, targetUnit)`
-- Correct aggregation in the chart pipeline (aggregate on `baseValue`, convert after)
+- Correct aggregation in charts (operate on `baseValue`, convert after)
 
 ### 2. Repository Pattern
-All Mongoose data access (`create`, `find`, `countDocuments`, `aggregate`) is encapsulated in `MetricsRepository` behind `IMetricsRepository`. The service layer only deals with business logic — validation, conversion, mapping. This makes the service unit-testable without a database.
+All Mongoose data access is encapsulated behind interfaces (`IMetricsRepository`, `IDailyMetricRepository`). The service layer only deals with business logic — validation, conversion, mapping. This makes the service unit-testable without a database.
 
 ### 3. Interface-Driven DI with Symbol Tokens
-All services, repositories, and converters implement interfaces (`IMetricsService`, `IMetricsRepository`, `IUnitConverter<T>`) and are injected via Symbol tokens. This enables:
+All services, repositories, and converters implement interfaces and are injected via Symbol tokens. This enables:
 - Easy mocking in tests
 - Swappable implementations
 - Clear contracts between layers
@@ -272,11 +276,12 @@ All services, repositories, and converters implement interfaces (`IMetricsServic
 ### 4. Generic Converter Interface
 `IUnitConverter<TUnit>` with `toBase()`, `fromBase()`, `convert()` makes adding new metric types straightforward — implement the interface and register in the module.
 
-### 5. MongoDB Aggregation for Chart
-The chart endpoint uses a `$match → $sort → $group → $sort` pipeline to efficiently pick the latest entry per day directly in the database, avoiding loading all records into memory.
+### 5. Pre-computed Daily Metrics (Write-time Materialization)
+Instead of running an expensive aggregation pipeline on every chart request, a separate `DailyMetric` collection stores the latest metric entry per (userId, type, day). On each metric create, an upsert updates the daily record only if the new entry is later ("latest wins"). This reduces chart read latency from ~1-2s to ~5-10ms at the cost of ~5ms extra per write.
 
-### 6. Compound Index
-`{ userId: 1, type: 1, date: -1 }` covers all three API query patterns with a single index.
+### 6. Compound Indexes
+- `metrics` collection: `{ userId: 1, type: 1, date: -1 }` — covers list and filter queries
+- `dailymetrics` collection: `{ userId: 1, type: 1, date: 1 }` (unique) — covers chart range queries
 
 ---
 
@@ -284,38 +289,48 @@ The chart endpoint uses a `$match → $sort → $group → $sort` pipeline to ef
 
 ```
 src/
-├── main.ts                          # Bootstrap, pipes, CORS, Swagger
-├── app.module.ts                    # Root module
+├── main.ts                                    # Bootstrap, pipes, CORS, Swagger
+├── app.module.ts                              # Root module
 ├── commons/
-│   ├── dto/api-response.ts          # ResponseEntity wrapper
-│   ├── enums/                       # MetricType, DistanceUnit, TemperatureUnit
-│   └── errors/                      # Error constants + custom exceptions
+│   ├── dto/api-response.ts                    # ResponseEntity wrapper
+│   ├── enums/                                 # MetricType, DistanceUnit, TemperatureUnit
+│   └── errors/                                # Error constants + custom exceptions
 ├── configs/
-│   ├── app/app.config.ts            # App config (port, name, swagger)
-│   ├── config.validation.ts         # Joi env validation
-│   ├── database/mongo-db/           # MongooseModule.forRootAsync
-│   └── swagger/swagger.config.ts    # Swagger setup
-├── filter/
-│   ├── global-exception.filter.ts   # Global exception handler
-│   └── handler/                     # HttpExceptionHandler, DefaultExceptionHandler
+│   ├── app/app.config.ts                      # App config (port, name, swagger)
+│   ├── config.validation.ts                   # Joi env validation
+│   ├── database/mongo-db/                     # MongooseModule.forRootAsync
+│   └── swagger/swagger.config.ts              # Swagger setup
+├── filters/
+│   ├── global-exception.filter.ts             # Global exception handler
+│   └── handler/                               # HttpException + Default handlers
 ├── interceptors/
-│   └── response.interceptor.ts      # Wraps responses with requestId + timestamp
-└── metrics/
-    ├── metrics.module.ts            # Feature module (DI wiring)
-    ├── metrics.controller.ts        # POST, GET, GET /chart
-    ├── services/metrics.service.ts  # Business logic + conversion
-    ├── repositories/metrics.repository.ts  # Mongoose data access
-    ├── schemas/metric.schema.ts     # Mongoose schema + indexes
-    ├── dto/                         # CreateMetricDto, QueryMetricDto, ChartQueryDto
-    ├── converters/                  # Distance/Temperature converters + interface
-    └── interfaces/                  # IMetricsService, IMetricsRepository + tokens
+│   └── response.interceptor.ts                # Wraps responses with requestId + timestamp
+└── modules/
+    ├── health/
+    │   ├── health.controller.ts               # GET /health
+    │   └── health.module.ts
+    └── metrics/
+        ├── metrics.module.ts                  # Feature module (DI wiring)
+        ├── metrics.controller.ts              # POST, GET /metrics, GET /chart
+        ├── services/
+        │   └── metrics.service.ts             # Business logic + conversion
+        ├── repositories/
+        │   ├── metrics.repository.ts          # Raw metric data access
+        │   └── daily-metric.repository.ts     # Pre-computed daily snapshots
+        ├── schemas/
+        │   ├── metric.schema.ts               # Metric schema + compound index
+        │   └── daily-metric.schema.ts         # DailyMetric schema + unique index
+        ├── dto/                               # CreateMetricDto, QueryMetricDto, ChartQueryDto
+        ├── converters/                        # Distance/Temperature converters + interface
+        └── interfaces/                        # Service, repository, daily-repo interfaces + tokens
 
 test/
-├── unit/                            # Converter unit tests
-└── metrics.e2e-spec.ts             # Integration tests (all endpoints)
+├── unit/                                      # Converter unit tests (33 tests)
+└── metrics.e2e-spec.ts                        # Integration tests (24 tests)
 
 scripts/
-└── seed-metrics.ts                  # Seed 10M rows for perf testing
+├── seed-metrics.ts                            # Seed 10M rows for perf testing
+└── backfill-daily-metrics.ts                  # Populate dailymetrics from existing data
 ```
 
 ---
@@ -330,5 +345,5 @@ scripts/
 | `pnpm test` | Run unit tests |
 | `pnpm test:e2e` | Run integration tests |
 | `pnpm test:cov` | Run tests with coverage |
-| `pnpm seed` | Seed 10M metric documents |
 | `pnpm lint` | Lint with ESLint |
+| `pnpm seed` | Backfill daily metrics from raw data |
