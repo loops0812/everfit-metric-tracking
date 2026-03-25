@@ -22,7 +22,7 @@ services:
     env_file:
       - .env
     ports:
-      - '27017:27017'
+      - 27027:27017
 
   # mongo:
   #   image: mongo:7
