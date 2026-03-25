@@ -71,6 +71,10 @@
       "<rootDir>/test"
     ],
     "testRegex": ".*\\.spec\\.ts$",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "\\.e2e-spec\\.ts$"
+    ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
@@ -92,6 +96,9 @@
       "allowedVersions": {
         "class-validator": "0.15"
       }
-    }
+    },
+    "onlyBuiltDependencies": [
+      "mongodb-memory-server"
+    ]
   }
 }

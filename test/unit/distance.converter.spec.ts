@@ -64,23 +64,33 @@ describe('DistanceConverter', () => {
 
   describe('convert (cross-unit)', () => {
     it('should convert feet to inches (1 foot = 12 inches)', () => {
-      expect(converter.convert(1, DistanceUnit.FEET, DistanceUnit.INCH)).toBeCloseTo(12, 4);
+      expect(
+        converter.convert(1, DistanceUnit.FEET, DistanceUnit.INCH),
+      ).toBeCloseTo(12, 4);
     });
 
     it('should convert yards to feet (1 yard = 3 feet)', () => {
-      expect(converter.convert(1, DistanceUnit.YARD, DistanceUnit.FEET)).toBeCloseTo(3, 4);
+      expect(
+        converter.convert(1, DistanceUnit.YARD, DistanceUnit.FEET),
+      ).toBeCloseTo(3, 4);
     });
 
     it('should convert 100cm to 1 meter', () => {
-      expect(converter.convert(100, DistanceUnit.CENTIMETER, DistanceUnit.METER)).toBeCloseTo(1, 6);
+      expect(
+        converter.convert(100, DistanceUnit.CENTIMETER, DistanceUnit.METER),
+      ).toBeCloseTo(1, 6);
     });
 
     it('should be idempotent for same unit', () => {
-      expect(converter.convert(42, DistanceUnit.METER, DistanceUnit.METER)).toBe(42);
+      expect(
+        converter.convert(42, DistanceUnit.METER, DistanceUnit.METER),
+      ).toBe(42);
     });
 
     it('should handle large values', () => {
-      expect(converter.convert(1000000, DistanceUnit.CENTIMETER, DistanceUnit.METER)).toBeCloseTo(10000, 4);
+      expect(
+        converter.convert(1000000, DistanceUnit.CENTIMETER, DistanceUnit.METER),
+      ).toBeCloseTo(10000, 4);
     });
   });
 

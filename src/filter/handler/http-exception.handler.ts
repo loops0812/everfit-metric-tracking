@@ -35,7 +35,8 @@ export class HttpExceptionHandler implements ExceptionHandler {
     const message =
       typeof response === 'string'
         ? response
-        : (response as Record<string, unknown>).message as string ?? httpException.message;
+        : (((response as Record<string, unknown>).message as string) ??
+          httpException.message);
 
     return ResponseEntity.error(message, statusCode, { errorCode });
   }

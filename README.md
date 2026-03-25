@@ -1,98 +1,333 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Everfit Metric Tracking API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A RESTful API for tracking health & fitness metrics (distance and temperature) with unit conversion support. Built with **NestJS**, **MongoDB**, and **TypeScript**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Table of Contents
 
-## Description
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [API Reference](#api-reference)
+- [Testing](#testing)
+- [Design Decisions](#design-decisions)
+- [Project Structure](#project-structure)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## Features
 
-```bash
-$ pnpm install
+- **Create metrics** — Record distance or temperature with any supported unit
+- **List metrics** — Query by user and type with optional unit conversion and pagination
+- **Chart data** — Aggregate latest-per-day values over a time period for charting
+- **Unit conversion** — Automatic base-value normalization; query in any unit regardless of how data was stored
+- **Validation** — Request validation via class-validator with structured error responses
+- **Swagger** — Interactive API docs at `/api-docs`
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js (TypeScript) |
+| Framework | NestJS 11 |
+| Database | MongoDB 7 (Mongoose ODM) |
+| Validation | class-validator + class-transformer |
+| Docs | Swagger (OpenAPI) |
+| Testing | Jest + Supertest |
+| Container | Docker + Docker Compose |
+| Package Manager | pnpm |
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    Controller Layer                    │
+│  MetricsController (POST, GET /metrics, GET /chart)   │
+├──────────────────────────────────────────────────────┤
+│                    Service Layer                      │
+│  MetricsService (IMetricsService)                     │
+│  ├── DistanceConverter (IUnitConverter<DistanceUnit>)  │
+│  └── TemperatureConverter (IUnitConverter<TempUnit>)   │
+├──────────────────────────────────────────────────────┤
+│                   Repository Layer                     │
+│  MetricsRepository (IMetricsRepository)               │
+│  └── create, findWithCount, aggregateLatestPerDay     │
+├──────────────────────────────────────────────────────┤
+│                    Data Layer                          │
+│  MongoDB  ←  Mongoose (Metric Schema)                 │
+│  Compound index: { userId, type, date }               │
+└──────────────────────────────────────────────────────┘
 ```
 
-## Compile and run the project
+**Key patterns:**
+- **Interface-driven DI** — Services, repositories, and converters are injected via Symbol tokens with interfaces (`IMetricsService`, `IMetricsRepository`, `IUnitConverter<T>`)
+- **Repository pattern** — All Mongoose data access (queries, aggregation) is encapsulated in `MetricsRepository`, keeping the service focused on business logic (validation, conversion)
+- **Base-value normalization** — All metrics are stored with both the original value/unit and a `baseValue` (meters for distance, °C for temperature), enabling efficient querying and conversion
+- **Strategy pattern** — Converters are registered in a `Map<MetricType, IUnitConverter>` for extensibility
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm 10+
+- Docker & Docker Compose (for MongoDB)
+
+### 1. Clone & Install
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+git clone <repo-url>
+cd everfit-metric-tracking
+pnpm install
 ```
 
-## Run tests
+### 2. Start MongoDB
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+docker compose up mongo -d
 ```
 
-## Deployment
+### 3. Configure Environment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Copy `.env.example` to `.env` (or use the defaults):
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+```env
+NODE_ENV=development
+PORT=3000
+APP_NAME="Everfit Metric Tracking API"
+API_PREFIX=api
+APP_VERSION=1.0.0
+
+SWAGGER_ENABLED=true
+SWAGGER_TITLE="Everfit Metric Tracking API"
+SWAGGER_DESCRIPTION="API documentation for Everfit Metric Tracking"
+SWAGGER_PREFIX=api-docs
+
+MONGO_URI=mongodb://localhost:27017
+MONGO_DB_NAME=everfit-metrics
+```
+
+### 4. Run
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+# Development (watch mode)
+pnpm start:dev
+
+# Production
+pnpm build
+pnpm start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 5. Run with Docker
 
-## Resources
+```bash
+docker compose up --build
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+The API will be available at `http://localhost:3000/api` and Swagger at `http://localhost:3000/api-docs`.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+---
 
-## Support
+## API Reference
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Base URL: `/api`
 
-## Stay in touch
+### Create Metric
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```
+POST /api/metrics
+```
 
-## License
+**Body:**
+```json
+{
+  "userId": "user-1",
+  "type": "distance",
+  "value": 100,
+  "unit": "meter",
+  "date": "2026-03-24T00:00:00.000Z"
+}
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `userId` | string | ✅ | User identifier |
+| `type` | enum | ✅ | `distance` or `temperature` |
+| `value` | number | ✅ | Must be ≥ 0 for distance |
+| `unit` | string | ✅ | See [Supported Units](#supported-units) |
+| `date` | ISO 8601 | ✅ | Date of the measurement |
+
+### List Metrics
+
+```
+GET /api/metrics?userId=user-1&type=distance&unit=meter&page=1&limit=20
+```
+
+| Param | Type | Required | Default | Notes |
+|-------|------|----------|---------|-------|
+| `userId` | string | ✅ | — | |
+| `type` | enum | ✅ | — | `distance` or `temperature` |
+| `unit` | string | ❌ | original | Target unit for conversion |
+| `page` | int | ❌ | 1 | Min: 1 |
+| `limit` | int | ❌ | 20 | Min: 1, Max: 100 |
+
+**Response:**
+```json
+{
+  "data": [
+    { "userId": "user-1", "type": "distance", "value": 100, "unit": "meter", "date": "2026-03-24T00:00:00.000Z" }
+  ],
+  "total": 42,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 3
+}
+```
+
+### Chart Data
+
+```
+GET /api/metrics/chart?userId=user-1&type=distance&period=1m&unit=meter
+```
+
+Returns the **latest metric value per day** within the specified period — designed for chart visualization.
+
+| Param | Type | Required | Notes |
+|-------|------|----------|-------|
+| `userId` | string | ✅ | |
+| `type` | enum | ✅ | `distance` or `temperature` |
+| `period` | string | ✅ | Format: `<n><w\|m\|y>` (e.g., `1w`, `1m`, `3m`, `1y`) |
+| `unit` | string | ❌ | Target unit; defaults to base unit (meter/°C) |
+
+**Response:**
+```json
+{
+  "userId": "user-1",
+  "type": "distance",
+  "unit": "meter",
+  "period": "1m",
+  "from": "2026-02-24T...",
+  "to": "2026-03-24T...",
+  "dataPoints": [
+    { "date": "2026-03-20", "value": 1500.5 },
+    { "date": "2026-03-21", "value": 2300.0 }
+  ]
+}
+```
+
+### Supported Units
+
+| Metric Type | Units | Base Unit |
+|-------------|-------|-----------|
+| `distance` | `meter`, `centimeter`, `inch`, `feet`, `yard` | meter |
+| `temperature` | `C`, `F`, `K` | °C (Celsius) |
+
+---
+
+## Testing
+
+```bash
+# Unit tests (33 tests — converters)
+pnpm test
+
+# E2E integration tests (24 tests — full API)
+pnpm test:e2e
+
+# Test coverage
+pnpm test:cov
+```
+
+**E2E tests** connect to Docker MongoDB using a separate `everfit-metrics-test` database (auto-cleaned before/after each run).
+
+### Test Coverage
+
+| Area | Tests | Covers |
+|------|-------|--------|
+| DistanceConverter | 17 | All unit conversions, edge cases, negative values, unsupported units |
+| TemperatureConverter | 16 | C↔F↔K conversions, edge cases, unsupported units |
+| POST /metrics | 9 | Create, validation, negative distance, invalid types/units |
+| GET /metrics | 7 | Filtering, unit conversion, pagination, validation |
+| GET /metrics/chart | 8 | Daily aggregation, latest-per-day, period filtering, conversion |
+
+---
+
+## Design Decisions
+
+### 1. Base-Value Normalization
+Every metric is stored with its original `value`/`unit` AND a computed `baseValue` (meters or °C). This enables:
+- Efficient queries without runtime conversion
+- Converting to any unit on read via `fromBase(baseValue, targetUnit)`
+- Correct aggregation in the chart pipeline (aggregate on `baseValue`, convert after)
+
+### 2. Repository Pattern
+All Mongoose data access (`create`, `find`, `countDocuments`, `aggregate`) is encapsulated in `MetricsRepository` behind `IMetricsRepository`. The service layer only deals with business logic — validation, conversion, mapping. This makes the service unit-testable without a database.
+
+### 3. Interface-Driven DI with Symbol Tokens
+All services, repositories, and converters implement interfaces (`IMetricsService`, `IMetricsRepository`, `IUnitConverter<T>`) and are injected via Symbol tokens. This enables:
+- Easy mocking in tests
+- Swappable implementations
+- Clear contracts between layers
+
+### 4. Generic Converter Interface
+`IUnitConverter<TUnit>` with `toBase()`, `fromBase()`, `convert()` makes adding new metric types straightforward — implement the interface and register in the module.
+
+### 5. MongoDB Aggregation for Chart
+The chart endpoint uses a `$match → $sort → $group → $sort` pipeline to efficiently pick the latest entry per day directly in the database, avoiding loading all records into memory.
+
+### 6. Compound Index
+`{ userId: 1, type: 1, date: -1 }` covers all three API query patterns with a single index.
+
+---
+
+## Project Structure
+
+```
+src/
+├── main.ts                          # Bootstrap, pipes, CORS, Swagger
+├── app.module.ts                    # Root module
+├── commons/
+│   ├── dto/api-response.ts          # ResponseEntity wrapper
+│   ├── enums/                       # MetricType, DistanceUnit, TemperatureUnit
+│   └── errors/                      # Error constants + custom exceptions
+├── configs/
+│   ├── app/app.config.ts            # App config (port, name, swagger)
+│   ├── config.validation.ts         # Joi env validation
+│   ├── database/mongo-db/           # MongooseModule.forRootAsync
+│   └── swagger/swagger.config.ts    # Swagger setup
+├── filter/
+│   ├── global-exception.filter.ts   # Global exception handler
+│   └── handler/                     # HttpExceptionHandler, DefaultExceptionHandler
+├── interceptors/
+│   └── response.interceptor.ts      # Wraps responses with requestId + timestamp
+└── metrics/
+    ├── metrics.module.ts            # Feature module (DI wiring)
+    ├── metrics.controller.ts        # POST, GET, GET /chart
+    ├── services/metrics.service.ts  # Business logic + conversion
+    ├── repositories/metrics.repository.ts  # Mongoose data access
+    ├── schemas/metric.schema.ts     # Mongoose schema + indexes
+    ├── dto/                         # CreateMetricDto, QueryMetricDto, ChartQueryDto
+    ├── converters/                  # Distance/Temperature converters + interface
+    └── interfaces/                  # IMetricsService, IMetricsRepository + tokens
+
+test/
+├── unit/                            # Converter unit tests
+└── metrics.e2e-spec.ts             # Integration tests (all endpoints)
+
+scripts/
+└── seed-metrics.ts                  # Seed 10M rows for perf testing
+```
+
+---
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm start:dev` | Start in watch mode |
+| `pnpm build` | Compile TypeScript |
+| `pnpm start:prod` | Run compiled output |
+| `pnpm test` | Run unit tests |
+| `pnpm test:e2e` | Run integration tests |
+| `pnpm test:cov` | Run tests with coverage |
+| `pnpm seed` | Seed 10M metric documents |
+| `pnpm lint` | Lint with ESLint |

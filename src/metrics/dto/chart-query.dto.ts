@@ -3,12 +3,9 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsInt,
-  Min,
-  Max,
+  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import { MetricType } from 'src/commons/enums/metric-type.enum';
 import { DistanceUnit } from 'src/commons/enums/distance-unit.enum';
 import { TemperatureUnit } from 'src/commons/enums/temperature-unit.enum';
@@ -18,7 +15,7 @@ const ALL_UNITS = [
   ...Object.values(TemperatureUnit),
 ];
 
-export class QueryMetricDto {
+export class ChartQueryDto {
   @ApiProperty({ example: 'user-1' })
   @IsString()
   @IsNotEmpty()
@@ -28,28 +25,23 @@ export class QueryMetricDto {
   @IsEnum(MetricType)
   type: MetricType;
 
+  @ApiProperty({
+    example: '1m',
+    description: 'Period filter: 1w (1 week), 2w, 1m (1 month), 3m, 6m, 1y',
+  })
+  @IsString()
+  @Matches(/^\d+(w|m|y)$/, {
+    message: 'Period must match format: <number><w|m|y> (e.g. 1w, 1m, 3m, 1y)',
+  })
+  period: string;
+
   @ApiPropertyOptional({
     enum: ALL_UNITS,
     example: 'meter',
     description:
-      'Target unit for conversion. If omitted, returns values in original unit.',
+      'Target unit for conversion. If omitted, returns base unit values.',
   })
   @IsOptional()
   @IsString()
   unit?: string;
-
-  @ApiPropertyOptional({ example: 1, default: 1, minimum: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ example: 20, default: 20, minimum: 1, maximum: 100 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 20;
 }

@@ -24,7 +24,6 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      
     }),
   );
 
@@ -34,7 +33,9 @@ async function bootstrap() {
   setupSwagger(app, config);
 
   await app.listen(config.port, () => {
-    logger.log(`Server is running on http://localhost:${config.port}/${config.apiPrefix}`);
+    logger.log(
+      `Server is running on http://localhost:${config.port}/${config.apiPrefix}`,
+    );
   });
 }
 bootstrap();

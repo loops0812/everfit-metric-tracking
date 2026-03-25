@@ -8,8 +8,12 @@ export class DefaultExceptionHandler implements ExceptionHandler {
   }
 
   handle(): ResponseEntity<null> {
-    return ResponseEntity.error('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR, {
-      errorCode: 'INTERNAL_ERROR',
-    });
+    return ResponseEntity.error(
+      'Internal server error',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      {
+        errorCode: 'INTERNAL_ERROR',
+      },
+    );
   }
 }
