@@ -158,6 +158,50 @@ export class MetricsService implements IMetricsService {
     };
   }
 
+  async getChartDataLegacy(query: ChartQueryDto): Promise<ChartResult> {
+    const { userId, type, period, unit } = query;
+
+    if (unit) {
+      this.validateUnit(type, unit);
+    }
+
+    const from = this.parsePeriodStart(period);
+    const to = new Date();
+
+    const results = await this.metricsRepository.aggregateLatestPerDay(
+      userId,
+      type,
+      from,
+      to,
+    );
+
+    this.logger.log(
+      `[LEGACY] Chart data for user=${userId}, type=${type}, period=${period}: ${results.length} data points`,
+    );
+
+    const converter = this.converters[type];
+    const baseUnit =
+      type === MetricType.DISTANCE
+        ? DistanceUnit.METER
+        : TemperatureUnit.CELSIUS;
+    const targetUnit = unit ?? baseUnit;
+
+    const dataPoints = results.map((r) => ({
+      date: r.date,
+      value: converter.fromBase(r.baseValue, targetUnit),
+    }));
+
+    return {
+      userId,
+      type,
+      unit: targetUnit,
+      period,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      dataPoints,
+    };
+  }
+
   // ── Helpers ──────────────────────────────────────────────────
 
   private parsePeriodStart(period: string): Date {

@@ -66,4 +66,21 @@ export class MetricsController {
   getChartData(@Query() query: ChartQueryDto) {
     return this.metricsService.getChartData(query);
   }
+
+  @Get('chart/legacy')
+  @ApiOperation({
+    summary:
+      '[Legacy] Chart data via runtime aggregation — for performance comparison',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Chart data retrieved (slow aggregation path).',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid query parameters.',
+  })
+  getChartDataLegacy(@Query() query: ChartQueryDto) {
+    return this.metricsService.getChartDataLegacy(query);
+  }
 }

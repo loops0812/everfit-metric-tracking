@@ -194,6 +194,7 @@ Or use a scheduled job for more control (e.g., keep latest N entries per user pe
 | Security | CORS only | Helmet + throttler | Orthogonal to core challenge |
 | Conversion | App-layer | DB-layer | Testability + extensibility |
 | Retention | Indefinite | TTL index | No requirement specified |
+| Chart reads | Pre-computed DailyMetric | Runtime aggregation | ~100-200x faster reads |
 
 ---
 

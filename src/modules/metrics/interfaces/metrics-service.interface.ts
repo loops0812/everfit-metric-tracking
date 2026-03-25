@@ -56,4 +56,9 @@ export interface IMetricsService {
    * @return Promise<ChartResult> An object containing the chart data for the specified query
    */
   getChartData(query: ChartQueryDto): Promise<ChartResult>;
+
+  /**
+   * Legacy: chart data via runtime aggregation (for performance comparison demo).
+   */
+  getChartDataLegacy(query: ChartQueryDto): Promise<ChartResult>;
 }

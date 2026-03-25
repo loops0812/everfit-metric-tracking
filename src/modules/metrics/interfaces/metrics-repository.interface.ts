@@ -48,4 +48,14 @@ export interface IMetricsRepository {
     skip: number,
     limit: number,
   ): Promise<FindWithCountResult>;
+
+  /**
+   * Legacy: runtime aggregation for chart data (kept for performance comparison demo).
+   */
+  aggregateLatestPerDay(
+    userId: string,
+    type: string,
+    from: Date,
+    to: Date,
+  ): Promise<AggregatedDayEntry[]>;
 }
