@@ -11,6 +11,7 @@ import { DistanceUnit } from 'src/commons/enums/distance-unit.enum';
 import { TemperatureUnit } from 'src/commons/enums/temperature-unit.enum';
 import type { IUnitConverter } from '../converters/types/unit-converter.interface';
 import type { IMetricsRepository } from '../interfaces/metrics-repository.interface';
+import type { IDailyMetricRepository } from '../interfaces/daily-metric-repository.interface';
 import {
   IMetricsService,
   MetricResult,
@@ -22,6 +23,7 @@ import {
   TEMPERATURE_CONVERTER,
 } from '../converters/converter.tokens';
 import { METRICS_REPOSITORY } from '../interfaces/metrics-repository.interface';
+import { DAILY_METRIC_REPOSITORY } from '../interfaces/daily-metric-repository.interface';
 
 const DISTANCE_UNITS = Object.values(DistanceUnit) as string[];
 const TEMPERATURE_UNITS = Object.values(TemperatureUnit) as string[];
@@ -34,6 +36,8 @@ export class MetricsService implements IMetricsService {
   constructor(
     @Inject(METRICS_REPOSITORY)
     private readonly metricsRepository: IMetricsRepository,
+    @Inject(DAILY_METRIC_REPOSITORY)
+    private readonly dailyMetricRepository: IDailyMetricRepository,
     @Inject(DISTANCE_CONVERTER) distanceConverter: IUnitConverter<DistanceUnit>,
     @Inject(TEMPERATURE_CONVERTER)
     temperatureConverter: IUnitConverter<TemperatureUnit>,
@@ -49,6 +53,7 @@ export class MetricsService implements IMetricsService {
 
     const converter = this.converters[dto.type];
     const baseValue = converter.toBase(dto.value, dto.unit);
+    const metricDate = new Date(dto.date);
 
     const metric = await this.metricsRepository.create({
       userId: dto.userId,
@@ -56,7 +61,18 @@ export class MetricsService implements IMetricsService {
       value: dto.value,
       unit: dto.unit,
       baseValue,
-      date: new Date(dto.date),
+      date: metricDate,
+    });
+
+    // Maintain pre-computed daily snapshot (latest entry per day wins)
+    await this.dailyMetricRepository.upsertDaily({
+      userId: dto.userId,
+      type: dto.type,
+      date: metricDate,
+      baseValue,
+      value: dto.value,
+      unit: dto.unit,
+      latestEntryDate: metricDate,
     });
 
     this.logger.log(
@@ -108,7 +124,7 @@ export class MetricsService implements IMetricsService {
     const from = this.parsePeriodStart(period);
     const to = new Date();
 
-    const results = await this.metricsRepository.aggregateLatestPerDay(
+    const results = await this.dailyMetricRepository.findByRange(
       userId,
       type,
       from,

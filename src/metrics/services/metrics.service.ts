@@ -51,6 +51,9 @@ export class MetricsService implements IMetricsService {
       unit: dto.unit,
       baseValue,
       date: new Date(dto.date),
+      epochDay: Math.floor(
+        new Date(dto.date).getTime() / (1000 * 60 * 60 * 24),
+      ), // For efficient daily aggregation
     });
   }
 

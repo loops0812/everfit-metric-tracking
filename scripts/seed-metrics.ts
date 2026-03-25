@@ -60,25 +60,31 @@ function generateDoc() {
   if (isDistance) {
     const unit = randomItem(DISTANCE_UNITS);
     const value = Math.round(Math.random() * 10000 * 100) / 100; // 0–10000, 2 decimals
+    const date = randomDate();
+    const epochDay = Math.floor(date.getTime() / (1000 * 60 * 60 * 24));
     return {
       userId: randomItem(USER_IDS),
       type: 'distance',
       value,
       unit,
       baseValue: value * DISTANCE_TO_BASE[unit],
-      date: randomDate(),
+      date,
+      epochDay,
     };
   }
 
   const unit = randomItem(TEMP_UNITS);
   const value = Math.round((Math.random() * 100 - 20) * 100) / 100; // -20 to 80
+  const date = randomDate();
+  const epochDay = Math.floor(date.getTime() / (1000 * 60 * 60 * 24));
   return {
     userId: randomItem(USER_IDS),
     type: 'temperature',
     value,
     unit,
     baseValue: tempToBase(value, unit),
-    date: randomDate(),
+    date: date,
+    epochDay,
   };
 }
 

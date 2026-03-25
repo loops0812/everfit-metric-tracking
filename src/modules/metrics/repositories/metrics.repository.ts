@@ -1,13 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, PipelineStage } from 'mongoose';
+import { Model } from 'mongoose';
 import { Metric, MetricDocument } from '../schemas/metric.schema';
 import type {
   IMetricsRepository,
   CreateMetricData,
   MetricFilter,
   FindWithCountResult,
-  AggregatedDayEntry,
 } from '../interfaces/metrics-repository.interface';
 
 @Injectable()
@@ -47,57 +46,5 @@ export class MetricsRepository implements IMetricsRepository {
       `findWithCount() returned ${data.length}/${total} in ${Date.now() - start}ms`,
     );
     return { data, total };
-  }
-
-  async aggregateLatestPerDay(
-    userId: string,
-    type: string,
-    from: Date,
-    to: Date,
-  ): Promise<AggregatedDayEntry[]> {
-    const start = Date.now();
-    const pipeline: PipelineStage[] = [
-      {
-        $match: {
-          userId,
-          type,
-          date: { $gte: from, $lte: to },
-        },
-      },
-      { $sort: { date: -1 } },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: '%Y-%m-%d', date: '$date' },
-          },
-          baseValue: { $first: '$baseValue' },
-          value: { $first: '$value' },
-          unit: { $first: '$unit' },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ];
-
-    interface AggregateResult {
-      _id: string;
-      baseValue: number;
-      value: number;
-      unit: string;
-    }
-
-    const results = await this.metricModel
-      .aggregate<AggregateResult>(pipeline)
-      .exec();
-
-    this.logger.debug(
-      `aggregateLatestPerDay() returned ${results.length} points in ${Date.now() - start}ms`,
-    );
-
-    return results.map((r) => ({
-      date: r._id,
-      baseValue: r.baseValue,
-      value: r.value,
-      unit: r.unit,
-    }));
   }
 }

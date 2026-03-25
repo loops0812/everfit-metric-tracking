@@ -9,11 +9,13 @@ export interface CreateMetricData {
   unit: string;
   baseValue: number;
   date: Date;
+  epochDay: number;
 }
 
 export interface MetricFilter {
   userId: string;
   type: string;
+  epochDay?: number;
 }
 
 export interface FindWithCountResult {

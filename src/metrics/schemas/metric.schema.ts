@@ -23,9 +23,13 @@ export class Metric {
 
   @Prop({ required: true, index: true })
   date: Date;
+
+  @Prop({ required: true, index: true })
+  epochDay: number;
 }
 
 export const MetricSchema = SchemaFactory.createForClass(Metric);
 
 // Compound index for efficient querying by user + type + date range
 MetricSchema.index({ userId: 1, type: 1, date: -1 });
+MetricSchema.index({ userId: 1, type: 1, epochDay: -1 });

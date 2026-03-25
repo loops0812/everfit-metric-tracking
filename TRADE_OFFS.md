@@ -194,3 +194,26 @@ Or use a scheduled job for more control (e.g., keep latest N entries per user pe
 | Security | CORS only | Helmet + throttler | Orthogonal to core challenge |
 | Conversion | App-layer | DB-layer | Testability + extensibility |
 | Retention | Indefinite | TTL index | No requirement specified |
+
+---
+
+## 11. Pre-computed Daily Metrics vs Runtime Aggregation
+
+**Chose:** Write-time materialized `DailyMetric` collection  
+**Alternative:** Runtime MongoDB `$group` aggregation on every chart request
+
+| Aspect | DailyMetric (Chosen) | Runtime Aggregation |
+|---|---|---|
+| Chart read latency | ~5-10ms (indexed `find`) | ~1-2s (scan 100K+ docs) |
+| Write latency | ~10ms (+1 upsert) | ~5ms |
+| Storage overhead | ~1 doc per user/type/day | None |
+| Data consistency | Eventual (same request) | Always fresh |
+| Complexity | Two-step write logic | Single aggregation pipeline |
+
+**Why this approach:**
+- Chart endpoint is read-heavy — users view charts far more often than they log metrics
+- With 10M+ documents, the `$match → $sort → $group → $sort` pipeline scans ~100K docs per request
+- The `DailyMetric` collection stores one pre-computed record per (userId, type, day) with a unique compound index
+- On each metric create, an upsert updates the daily record only if the new entry has a later timestamp ("latest wins")
+- Chart reads become a simple `find()` on an indexed collection — O(days) instead of O(matching docs)
+- The trade-off is slightly slower writes (~5ms extra) for dramatically faster reads (~100-200x improvement)

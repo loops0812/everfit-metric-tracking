@@ -48,19 +48,4 @@ export interface IMetricsRepository {
     skip: number,
     limit: number,
   ): Promise<FindWithCountResult>;
-
-  /**
-   *
-   * @param userId
-   * @param type
-   * @param from
-   * @param to
-   * @return Promise<AggregatedDayEntry[]> An array of aggregated day entries
-   */
-  aggregateLatestPerDay(
-    userId: string,
-    type: string,
-    from: Date,
-    to: Date,
-  ): Promise<AggregatedDayEntry[]>;
 }
