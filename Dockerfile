@@ -1,18 +1,22 @@
-# Build stage
-FROM node:24.14.0-alpine3.23 AS builder
+FROM node:24.14.0-alpine3.23 AS base
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm fetch
+
+FROM base AS build 
+RUN pnpm install --offline --frozen-lockfile
 COPY . .
 RUN pnpm run build
 
-# Production stage
-FROM node:24.14.0-alpine3.23
+FROM base AS run-deps
+RUN pnpm install --offline --prod --frozen-lockfile
+    
+FROM node:24.14.0-alpine3.23 AS run
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
-COPY --from=builder /app/dist ./dist
-EXPOSE 3000
+COPY package.json .
+COPY --from=run-deps /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
 CMD ["node", "dist/main.js"]

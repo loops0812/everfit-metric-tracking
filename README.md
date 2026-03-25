@@ -1,224 +1,185 @@
 # Everfit Metric Tracking API
 
-A RESTful API for tracking health & fitness metrics (distance and temperature) with automatic unit conversion. Built with **NestJS**, **MongoDB**, and **TypeScript**.
+A RESTful API for tracking health & fitness metrics (distance and temperature) with automatic unit conversion, pre-computed chart data, and 10M-row performance testing.
 
-## Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Getting Started](#getting-started)
-- [API Reference](#api-reference)
-- [Testing](#testing)
-- [Design Decisions](#design-decisions)
-- [Trade-Offs](./TRADE_OFFS.md)
-- [Project Structure](#project-structure)
+> **Live Demo:** [https://everfit.panochess.edu.vn/api-docs](https://everfit.panochess.edu.vn/api-docs)
 
 ---
 
-## Features
+## Quick Links
 
-- **Create metrics** — Record distance or temperature with any supported unit
-- **List metrics** — Query by user and type with optional unit conversion and pagination
-- **Chart data** — Pre-computed daily snapshots for instant chart rendering (~5ms vs ~1-2s aggregation)
-- **Unit conversion** — Automatic base-value normalization; query in any unit regardless of how data was stored
-- **Validation** — Request validation via class-validator with structured error responses
-- **Swagger** — Interactive API docs at `/api-docs`
+| Resource | URL / Path |
+|----------|-----------|
+| **Swagger UI** | [https://everfit.panochess.edu.vn/api-docs](https://everfit.panochess.edu.vn/api-docs) |
+| **API Base** | `https://everfit.panochess.edu.vn/api` |
+| **Health Check** | [https://everfit.panochess.edu.vn/health](https://everfit.panochess.edu.vn/health) |
+| **Trade-Offs** | [TRADE_OFFS.md](./TRADE_OFFS.md) |
+| **Presentation** | [PRESENTATION.md](./PRESENTATION.md) |
 
-## Tech Stack
+---
 
-| Layer | Technology |
-|-------|-----------|
-| Runtime | Node.js (TypeScript) |
-| Framework | NestJS 11 |
-| Database | MongoDB 7 (Mongoose ODM) |
-| Validation | class-validator + class-transformer |
-| Docs | Swagger (OpenAPI 3.0) |
-| Testing | Jest + Supertest |
-| Container | Docker + Docker Compose |
-| Package Manager | pnpm |
+## Testing Environment
 
-## Architecture
+The live server is pre-seeded with **10 million metric records** for realistic performance testing.
 
-```
-┌───────────────────────────────────────────────────────┐
-│                    Controller Layer                   │
-│  MetricsController (POST, GET /metrics, GET /chart)   │
-├───────────────────────────────────────────────────────┤
-│                     Service Layer                     │
-│  MetricsService (IMetricsService)                     │
-│  ├── DistanceConverter  (IUnitConverter<DistanceUnit>)│
-│  └── TemperatureConverter (IUnitConverter<TempUnit>)  │
-├───────────────────────────────────────────────────────┤
-│                   Repository Layer                    │
-│  MetricsRepository (IMetricsRepository)               │
-│  └── create, findWithCount                            │
-│  DailyMetricRepository (IDailyMetricRepository)       │
-│  └── upsertDaily, findByRange                         │
-├───────────────────────────────────────────────────────┤
-│                     Data Layer                        │
-│  MongoDB                                              │
-│  ├── metrics   — raw entries, index {userId,type,date}│
-│  └── dailymetrics — pre-computed per-day snapshots    │
-└───────────────────────────────────────────────────────┘
-```
+### Seed Data Profile
 
-**Key patterns:**
-- **Interface-driven DI** — Services, repositories, and converters are injected via Symbol tokens (`IMetricsService`, `IMetricsRepository`, `IDailyMetricRepository`, `IUnitConverter<T>`)
-- **Repository pattern** — All Mongoose data access is encapsulated in repositories, keeping the service focused on business logic
-- **Write-time materialization** — On every metric insert, a `DailyMetric` record is upserted (latest-per-day wins), making chart reads a simple indexed `find()` instead of expensive aggregation
-- **Base-value normalization** — All metrics store both original value/unit and a `baseValue` (meters / °C), enabling efficient querying and conversion
-- **Strategy pattern** — Unit converters registered in a `Map<MetricType, IUnitConverter>` for extensibility
+| Property | Value |
+|----------|-------|
+| Total documents | **10,000,000** |
+| Users | `user-1` through `user-50` (50 users) |
+| Metric types | `distance` (50%) and `temperature` (50%) |
+| Date range | `2025-01-01` to `2026-03-24` (~15 months) |
+| Avg docs per user | ~200,000 |
+| Avg docs per user per type | ~100,000 |
 
-## Getting Started
+#### Distance Metrics
+| Property | Value |
+|----------|-------|
+| Units | `meter`, `centimeter`, `inch`, `feet`, `yard` (random) |
+| Value range | 0 – 10,000 (2 decimal places) |
+| Base unit | meter |
 
-### Prerequisites
+#### Temperature Metrics
+| Property | Value |
+|----------|-------|
+| Units | `C`, `F`, `K` (random) |
+| Value range | -20 – 80 (2 decimal places) |
+| Base unit | °C (Celsius) |
 
-- Node.js 20+
-- pnpm 10+
-- Docker & Docker Compose (for MongoDB)
+### Ready-to-Use Test Queries
 
-### 1. Clone & Install
+You can run these directly from the [Swagger UI](https://everfit.panochess.edu.vn/api-docs) or with `curl`.
+
+#### 1. Create a Metric
 
 ```bash
-git clone <repo-url>
-cd everfit-metric-tracking
-pnpm install
+curl -X POST https://everfit.panochess.edu.vn/api/metrics \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "user-1",
+    "type": "distance",
+    "value": 5000,
+    "unit": "meter",
+    "date": "2026-03-25T10:00:00.000Z"
+  }'
 ```
 
-### 2. Start MongoDB
+#### 2. List Metrics (with unit conversion)
 
 ```bash
-docker compose up mongo -d
+# List user-1's distance metrics, converted to feet, page 1
+curl "https://everfit.panochess.edu.vn/api/metrics?userId=user-1&type=distance&unit=feet&page=1&limit=10"
+
+# List user-10's temperature metrics, converted to Fahrenheit
+curl "https://everfit.panochess.edu.vn/api/metrics?userId=user-10&type=temperature&unit=F&page=1&limit=10"
 ```
 
-### 3. Configure Environment
-
-Copy `.env.example` to `.env` (or use the defaults):
-
-```env
-NODE_ENV=development
-PORT=3000
-APP_NAME="Everfit Metric Tracking API"
-API_PREFIX=api
-APP_VERSION=1.0.0
-
-SWAGGER_ENABLED=true
-SWAGGER_TITLE="Everfit Metric Tracking API"
-SWAGGER_DESCRIPTION="API documentation for Everfit Metric Tracking"
-SWAGGER_PREFIX=api-docs
-
-MONGO_URI=mongodb://localhost:27017
-MONGO_DB_NAME=everfit-metrics
-```
-
-### 4. Run
+#### 3. Chart Data — Optimized (Pre-computed Daily Snapshots)
 
 ```bash
-# Development (watch mode)
-pnpm start:dev
+# Distance chart for user-1, last 1 month, in yards
+curl "https://everfit.panochess.edu.vn/api/metrics/chart?userId=user-1&type=distance&period=1m&unit=yard"
 
-# Production
-pnpm build
-pnpm start:prod
+# Temperature chart for user-5, last 1 year, in Fahrenheit
+curl "https://everfit.panochess.edu.vn/api/metrics/chart?userId=user-5&type=temperature&period=1y&unit=F"
 ```
 
-### 5. Run with Docker
+#### 4. Chart Data — Legacy (Runtime Aggregation) ⚠️ Slow
 
 ```bash
-docker compose up --build
+# Same query using the old aggregation pipeline — compare response times!
+curl "https://everfit.panochess.edu.vn/api/metrics/chart/legacy?userId=user-1&type=distance&period=1m&unit=yard"
 ```
 
-The API will be available at `http://localhost:3000/api` and Swagger at `http://localhost:3000/api-docs`.
+### Performance Comparison
+
+| Endpoint | Method | Latency | How it works |
+|----------|--------|---------|--------------|
+| `GET /metrics/chart` | Pre-computed | **~5-10ms** | Reads from `dailymetrics` collection (indexed `find`) |
+| `GET /metrics/chart/legacy` | Aggregation | **~1-3s** | Scans 100K+ docs with `$match → $sort → $group → $sort` pipeline |
+
+> 💡 **Try it yourself:** Call both `/chart` and `/chart/legacy` with the same parameters and compare the response times. The optimized endpoint is **~100-200x faster**.
 
 ---
 
 ## API Reference
 
-### Base URL: `/api`
+### Base URL: `https://everfit.panochess.edu.vn/api`
 
-### Create Metric
+### Endpoints
 
-```
-POST /api/metrics
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/metrics` | Create a new metric entry |
+| `GET` | `/metrics` | List metrics with filtering, pagination, and unit conversion |
+| `GET` | `/metrics/chart` | Chart data (optimized, pre-computed daily snapshots) |
+| `GET` | `/metrics/chart/legacy` | Chart data (legacy runtime aggregation, for comparison) |
+| `GET` | `/health` | Health check |
 
-**Body:**
-```json
-{
-  "userId": "user-1",
-  "type": "distance",
-  "value": 100,
-  "unit": "meter",
-  "date": "2026-03-24T00:00:00.000Z"
-}
-```
+### POST /metrics — Create Metric
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `userId` | string | ✅ | User identifier |
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `userId` | string | ✅ | Non-empty |
 | `type` | enum | ✅ | `distance` or `temperature` |
-| `value` | number | ✅ | Must be ≥ 0 for distance |
+| `value` | number | ✅ | ≥ 0 for distance, any number for temperature |
 | `unit` | string | ✅ | See [Supported Units](#supported-units) |
-| `date` | ISO 8601 | ✅ | Date of the measurement |
+| `date` | ISO 8601 | ✅ | Valid date string |
 
-### List Metrics
+**Response:** The created metric object with computed `baseValue`.
 
-```
-GET /api/metrics?userId=user-1&type=distance&unit=meter&page=1&limit=20
-```
+### GET /metrics — List Metrics
 
 | Param | Type | Required | Default | Notes |
 |-------|------|----------|---------|-------|
-| `userId` | string | ✅ | — | |
+| `userId` | string | ✅ | — | e.g., `user-1` |
 | `type` | enum | ✅ | — | `distance` or `temperature` |
 | `unit` | string | ❌ | original | Target unit for conversion |
 | `page` | int | ❌ | 1 | Min: 1 |
-| `limit` | int | ❌ | 20 | Min: 1, Max: 100 |
+| `limit` | int | ❌ | 20 | 1–100 |
 
 **Response:**
 ```json
 {
   "data": [
-    { "userId": "user-1", "type": "distance", "value": 100, "unit": "meter", "date": "2026-03-24T00:00:00.000Z" }
+    { "userId": "user-1", "type": "distance", "value": 16404.2, "unit": "feet", "date": "2026-03-24T12:00:00.000Z" }
   ],
-  "total": 42,
+  "total": 99847,
   "page": 1,
   "limit": 20,
-  "totalPages": 3
+  "totalPages": 4993
 }
 ```
 
-### Chart Data
-
-```
-GET /api/metrics/chart?userId=user-1&type=distance&period=1m&unit=meter
-```
-
-Returns the **latest metric value per day** within the specified period — optimized via pre-computed daily snapshots.
+### GET /metrics/chart — Chart Data (Optimized)
 
 | Param | Type | Required | Notes |
 |-------|------|----------|-------|
-| `userId` | string | ✅ | |
+| `userId` | string | ✅ | e.g., `user-1` |
 | `type` | enum | ✅ | `distance` or `temperature` |
-| `period` | string | ✅ | Format: `<n><w\|m\|y>` (e.g., `1w`, `1m`, `3m`, `1y`) |
-| `unit` | string | ❌ | Target unit; defaults to base unit (meter / °C) |
+| `period` | string | ✅ | `<n><w\|m\|y>` — e.g., `1w`, `1m`, `3m`, `1y` |
+| `unit` | string | ❌ | Target unit; defaults to base unit |
 
 **Response:**
 ```json
 {
   "userId": "user-1",
   "type": "distance",
-  "unit": "meter",
+  "unit": "yard",
   "period": "1m",
-  "from": "2026-02-24T...",
-  "to": "2026-03-24T...",
+  "from": "2026-02-25T00:00:00.000Z",
+  "to": "2026-03-25T00:00:00.000Z",
   "dataPoints": [
-    { "date": "2026-03-20", "value": 1500.5 },
-    { "date": "2026-03-21", "value": 2300.0 }
+    { "date": "2026-02-25", "value": 8745.63 },
+    { "date": "2026-02-26", "value": 3201.44 }
   ]
 }
 ```
+
+### GET /metrics/chart/legacy — Chart Data (Legacy)
+
+Same parameters as `/metrics/chart`. Uses runtime `$group` aggregation instead of pre-computed snapshots. Included for **performance comparison only**.
 
 ### Supported Units
 
@@ -229,59 +190,108 @@ Returns the **latest metric value per day** within the specified period — opti
 
 ---
 
-## Testing
+## Architecture
 
-```bash
-# Unit tests (33 tests — converters)
-pnpm test
-
-# E2E integration tests (24 tests — full API)
-pnpm test:e2e
-
-# Test coverage
-pnpm test:cov
+```
+┌───────────────────────────────────────────────────────┐
+│                    Controller Layer                    │
+│  MetricsController (POST, GET /metrics, GET /chart)   │
+├───────────────────────────────────────────────────────┤
+│                     Service Layer                     │
+│  MetricsService (IMetricsService)                     │
+│  ├── DistanceConverter  (IUnitConverter<DistanceUnit>) │
+│  └── TemperatureConverter (IUnitConverter<TempUnit>)  │
+├───────────────────────────────────────────────────────┤
+│                   Repository Layer                    │
+│  MetricsRepository (IMetricsRepository)               │
+│  DailyMetricRepository (IDailyMetricRepository)       │
+├───────────────────────────────────────────────────────┤
+│                     Data Layer                        │
+│  MongoDB                                              │
+│  ├── metrics       — raw entries (10M docs)           │
+│  └── dailymetrics  — pre-computed per-day snapshots   │
+└───────────────────────────────────────────────────────┘
 ```
 
-**E2E tests** connect to Docker MongoDB using a separate `everfit-metrics-test` database (auto-cleaned before/after each run).
+### Key Design Patterns
 
-### Test Coverage
-
-| Area | Tests | Covers |
-|------|-------|--------|
-| DistanceConverter | 17 | All unit conversions, edge cases, negative values, unsupported units |
-| TemperatureConverter | 16 | C↔F↔K conversions, edge cases, unsupported units |
-| POST /metrics | 9 | Create, validation, negative distance, invalid types/units |
-| GET /metrics | 7 | Filtering, unit conversion, pagination, validation |
-| GET /metrics/chart | 8 | Daily snapshots, latest-per-day, period filtering, conversion |
+| Pattern | Where | Why |
+|---------|-------|-----|
+| **Interface-driven DI** | All layers | Inject via Symbol tokens for testability and swappability |
+| **Repository pattern** | Data access | Isolates Mongoose from business logic |
+| **Write-time materialization** | `DailyMetric` | Trades ~5ms extra per write for ~100x faster chart reads |
+| **Base-value normalization** | `Metric.baseValue` | Store in base units, convert on read — efficient aggregation |
+| **Strategy pattern** | Unit converters | `Map<MetricType, IUnitConverter>` for extensibility |
 
 ---
 
-## Design Decisions
+## Tech Stack
 
-### 1. Base-Value Normalization
-Every metric is stored with its original `value`/`unit` AND a computed `baseValue` (meters or °C). This enables:
-- Efficient queries without runtime conversion
-- Converting to any unit on read via `fromBase(baseValue, targetUnit)`
-- Correct aggregation in charts (operate on `baseValue`, convert after)
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js 20+ (TypeScript) |
+| Framework | NestJS 11 |
+| Database | MongoDB 7 (Mongoose ODM) |
+| Validation | class-validator + class-transformer |
+| Docs | Swagger (OpenAPI 3.0) |
+| Testing | Jest + Supertest |
+| Container | Docker + Docker Compose |
+| Package Manager | pnpm |
 
-### 2. Repository Pattern
-All Mongoose data access is encapsulated behind interfaces (`IMetricsRepository`, `IDailyMetricRepository`). The service layer only deals with business logic — validation, conversion, mapping. This makes the service unit-testable without a database.
+---
 
-### 3. Interface-Driven DI with Symbol Tokens
-All services, repositories, and converters implement interfaces and are injected via Symbol tokens. This enables:
-- Easy mocking in tests
-- Swappable implementations
-- Clear contracts between layers
+## Running Locally
 
-### 4. Generic Converter Interface
-`IUnitConverter<TUnit>` with `toBase()`, `fromBase()`, `convert()` makes adding new metric types straightforward — implement the interface and register in the module.
+### Prerequisites
 
-### 5. Pre-computed Daily Metrics (Write-time Materialization)
-Instead of running an expensive aggregation pipeline on every chart request, a separate `DailyMetric` collection stores the latest metric entry per (userId, type, day). On each metric create, an upsert updates the daily record only if the new entry is later ("latest wins"). This reduces chart read latency from ~1-2s to ~5-10ms at the cost of ~5ms extra per write.
+- Node.js 20+, pnpm 10+, Docker
 
-### 6. Compound Indexes
-- `metrics` collection: `{ userId: 1, type: 1, date: -1 }` — covers list and filter queries
-- `dailymetrics` collection: `{ userId: 1, type: 1, date: 1 }` (unique) — covers chart range queries
+### Setup
+
+```bash
+git clone <repo-url>
+cd everfit-metric-tracking
+pnpm install
+cp .env.example .env        # edit MONGO_URI if needed
+docker compose up mongo -d   # start MongoDB
+pnpm start:dev               # http://localhost:3000/api-docs
+```
+
+### Docker (full stack)
+
+```bash
+docker compose up --build    # API at :3000, Swagger at :3000/api-docs
+```
+
+### Seed 10M Rows (for performance testing)
+
+```bash
+npx ts-node scripts/seed-metrics.ts
+# Then backfill the pre-computed daily snapshots:
+npx ts-node scripts/backfill-daily-metrics.ts
+```
+
+---
+
+## Testing
+
+```bash
+pnpm test          # 33 unit tests (converters)
+pnpm test:e2e      # 24 integration tests (full API lifecycle)
+pnpm test:cov      # coverage report
+```
+
+### Test Coverage
+
+| Suite | Tests | Covers |
+|-------|-------|--------|
+| DistanceConverter | 17 | All 5 units, edge cases, negatives, unsupported units |
+| TemperatureConverter | 16 | C↔F↔K, absolute zero, edge cases, unsupported units |
+| POST /metrics | 9 | Create, validation, negative distance, invalid type/unit |
+| GET /metrics | 7 | Filtering, unit conversion, pagination, validation |
+| GET /metrics/chart | 8 | Daily snapshots, latest-per-day logic, period filtering, conversion |
+
+E2E tests use a separate `everfit-metrics-test` database, auto-cleaned before/after each run.
 
 ---
 
@@ -289,48 +299,45 @@ Instead of running an expensive aggregation pipeline on every chart request, a s
 
 ```
 src/
-├── main.ts                                    # Bootstrap, pipes, CORS, Swagger
-├── app.module.ts                              # Root module
+├── main.ts                                 # Bootstrap, pipes, CORS, Swagger
+├── app.module.ts                           # Root module
 ├── commons/
-│   ├── dto/api-response.ts                    # ResponseEntity wrapper
-│   ├── enums/                                 # MetricType, DistanceUnit, TemperatureUnit
-│   └── errors/                                # Error constants + custom exceptions
+│   ├── dto/api-response.ts                 # ResponseEntity wrapper
+│   ├── enums/                              # MetricType, DistanceUnit, TemperatureUnit
+│   └── errors/                             # Error constants + custom exceptions
 ├── configs/
-│   ├── app/app.config.ts                      # App config (port, name, swagger)
-│   ├── config.validation.ts                   # Joi env validation
-│   ├── database/mongo-db/                     # MongooseModule.forRootAsync
-│   └── swagger/swagger.config.ts              # Swagger setup
+│   ├── app/app.config.ts                   # App config (port, name, swagger)
+│   ├── config.validation.ts                # Joi env validation
+│   ├── database/mongo-db/                  # MongooseModule.forRootAsync
+│   └── swagger/swagger.config.ts           # Swagger setup
 ├── filters/
-│   ├── global-exception.filter.ts             # Global exception handler
-│   └── handler/                               # HttpException + Default handlers
+│   ├── global-exception.filter.ts          # Global exception handler
+│   └── handler/                            # HttpException + Default handlers
 ├── interceptors/
-│   └── response.interceptor.ts                # Wraps responses with requestId + timestamp
+│   └── response.interceptor.ts             # Wraps responses with requestId + timestamp
 └── modules/
-    ├── health/
-    │   ├── health.controller.ts               # GET /health
-    │   └── health.module.ts
+    ├── health/health.controller.ts         # GET /health
     └── metrics/
-        ├── metrics.module.ts                  # Feature module (DI wiring)
-        ├── metrics.controller.ts              # POST, GET /metrics, GET /chart
-        ├── services/
-        │   └── metrics.service.ts             # Business logic + conversion
+        ├── metrics.module.ts               # Feature module (DI wiring)
+        ├── metrics.controller.ts           # POST, GET /metrics, GET /chart, GET /chart/legacy
+        ├── services/metrics.service.ts     # Business logic + conversion
         ├── repositories/
-        │   ├── metrics.repository.ts          # Raw metric data access
-        │   └── daily-metric.repository.ts     # Pre-computed daily snapshots
+        │   ├── metrics.repository.ts       # Raw metric CRUD
+        │   └── daily-metric.repository.ts  # Pre-computed daily snapshots
         ├── schemas/
-        │   ├── metric.schema.ts               # Metric schema + compound index
-        │   └── daily-metric.schema.ts         # DailyMetric schema + unique index
-        ├── dto/                               # CreateMetricDto, QueryMetricDto, ChartQueryDto
-        ├── converters/                        # Distance/Temperature converters + interface
-        └── interfaces/                        # Service, repository, daily-repo interfaces + tokens
-
-test/
-├── unit/                                      # Converter unit tests (33 tests)
-└── metrics.e2e-spec.ts                        # Integration tests (24 tests)
+        │   ├── metric.schema.ts            # Metric schema + compound index
+        │   └── daily-metric.schema.ts      # DailyMetric schema + unique index
+        ├── dto/                            # CreateMetricDto, QueryMetricDto, ChartQueryDto
+        ├── converters/                     # Distance/Temperature converters
+        └── interfaces/                     # Service, repo interfaces + DI tokens
 
 scripts/
-├── seed-metrics.ts                            # Seed 10M rows for perf testing
-└── backfill-daily-metrics.ts                  # Populate dailymetrics from existing data
+├── seed-metrics.ts                         # Generate 10M test documents
+└── backfill-daily-metrics.ts               # Populate dailymetrics from existing data
+
+test/
+├── unit/                                   # Converter unit tests (33 tests)
+└── metrics.e2e-spec.ts                     # Integration tests (24 tests)
 ```
 
 ---
@@ -344,6 +351,27 @@ scripts/
 | `pnpm start:prod` | Run compiled output |
 | `pnpm test` | Run unit tests |
 | `pnpm test:e2e` | Run integration tests |
-| `pnpm test:cov` | Run tests with coverage |
-| `pnpm lint` | Lint with ESLint |
-| `pnpm seed` | Backfill daily metrics from raw data |
+| `pnpm test:cov` | Coverage report |
+| `pnpm lint` | ESLint check |
+| `pnpm seed` | Backfill daily metrics |
+
+---
+
+## Design Decisions
+
+See [TRADE_OFFS.md](./TRADE_OFFS.md) for detailed analysis of 11 architectural trade-offs including:
+
+1. MongoDB vs PostgreSQL
+2. Base-value normalization vs on-the-fly conversion
+3. Offset vs cursor-based pagination
+4. Pre-computed daily metrics vs runtime aggregation (~100-200x speedup)
+5. No caching, no auth, no rate limiting — and why
+
+---
+
+## CI/CD
+
+GitHub Actions pipeline on `staging` branch:
+
+1. **CI** (ubuntu-latest): `pnpm install → lint → build → test → test:e2e`
+2. **Deploy** (self-hosted): `docker compose build → docker compose up -d`
