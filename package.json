@@ -101,6 +101,5 @@
     "onlyBuiltDependencies": [
       "mongodb-memory-server"
     ]
-  },
-  "packageManager": "pnpm@10.33.0"
+  }
 }
