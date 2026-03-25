@@ -1,4 +1,4 @@
-import { DistanceConverter } from '../../src/metrics/converters/distance.converter';
+import { DistanceConverter } from '../../src/modules/metrics/converters/distance.converter';
 import { DistanceUnit } from '../../src/commons/enums/distance-unit.enum';
 import {
   CONVERTER_ERRORS,

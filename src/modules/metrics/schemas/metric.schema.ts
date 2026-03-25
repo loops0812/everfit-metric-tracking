@@ -9,7 +9,7 @@ export class Metric {
   @Prop({ required: true, index: true })
   userId: string;
 
-  @Prop({ required: true, enum: MetricType, index: true })
+  @Prop({ required: true, type: String, enum: MetricType, index: true })
   type: MetricType;
 
   @Prop({ required: true })

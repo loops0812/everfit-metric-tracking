@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import supertest from 'supertest';
 import { MongooseModule, getConnectionToken } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
-import { MetricsModule } from 'src/metrics/metrics.module';
+import { MetricsModule } from 'src/modules/metrics/metrics.module';
 
 const TEST_MONGO_URI =
   process.env.TEST_MONGO_URI ??

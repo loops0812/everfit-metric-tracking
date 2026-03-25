@@ -1,4 +1,4 @@
-import { TemperatureConverter } from '../../src/metrics/converters/temperature.converter';
+import { TemperatureConverter } from '../../src/modules/metrics/converters/temperature.converter';
 import { TemperatureUnit } from '../../src/commons/enums/temperature-unit.enum';
 import {
   CONVERTER_ERRORS,

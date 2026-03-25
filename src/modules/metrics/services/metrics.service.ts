@@ -1,4 +1,9 @@
-import { Injectable, Inject, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { Metric } from '../schemas/metric.schema';
 import { CreateMetricDto, QueryMetricDto, ChartQueryDto } from '../dto';
 import { MetricType } from 'src/commons/enums/metric-type.enum';
@@ -23,6 +28,7 @@ const TEMPERATURE_UNITS = Object.values(TemperatureUnit) as string[];
 
 @Injectable()
 export class MetricsService implements IMetricsService {
+  private readonly logger = new Logger(MetricsService.name);
   private readonly converters: Record<MetricType, IUnitConverter<any>>;
 
   constructor(
@@ -44,7 +50,7 @@ export class MetricsService implements IMetricsService {
     const converter = this.converters[dto.type];
     const baseValue = converter.toBase(dto.value, dto.unit);
 
-    return this.metricsRepository.create({
+    const metric = await this.metricsRepository.create({
       userId: dto.userId,
       type: dto.type,
       value: dto.value,
@@ -52,6 +58,12 @@ export class MetricsService implements IMetricsService {
       baseValue,
       date: new Date(dto.date),
     });
+
+    this.logger.log(
+      `Created ${dto.type} metric for user=${dto.userId}: ${dto.value} ${dto.unit} (base=${baseValue})`,
+    );
+
+    return metric;
   }
 
   async findAll(query: QueryMetricDto): Promise<PaginatedResult<MetricResult>> {
@@ -62,8 +74,15 @@ export class MetricsService implements IMetricsService {
     }
 
     const skip = (page - 1) * limit;
-    const { data: metrics, total } =
-      await this.metricsRepository.findWithCount({ userId, type }, skip, limit);
+    const { data: metrics, total } = await this.metricsRepository.findWithCount(
+      { userId, type },
+      skip,
+      limit,
+    );
+
+    this.logger.log(
+      `Listed ${type} metrics for user=${userId}: ${metrics.length}/${total} (page=${page}, limit=${limit})`,
+    );
 
     const converter = this.converters[type];
     const data: MetricResult[] = metrics.map((m) =>
@@ -94,6 +113,10 @@ export class MetricsService implements IMetricsService {
       type,
       from,
       to,
+    );
+
+    this.logger.log(
+      `Chart data for user=${userId}, type=${type}, period=${period}: ${results.length} data points`,
     );
 
     const converter = this.converters[type];
@@ -179,6 +202,9 @@ export class MetricsService implements IMetricsService {
   private validateUnit(type: MetricType, unit: string): void {
     const valid = this.getValidUnits(type);
     if (!valid.includes(unit)) {
+      this.logger.warn(
+        `Invalid unit '${unit}' for type '${type}'. Valid: ${valid.join(', ')}`,
+      );
       throw new BadRequestException(
         `Invalid unit '${unit}' for metric type '${type}'. Valid units: ${valid.join(', ')}`,
       );

@@ -29,14 +29,34 @@ export interface AggregatedDayEntry {
 }
 
 export interface IMetricsRepository {
+  /**
+   *
+   * @param data
+   * @return Promise<Metric> The created metric document
+   */
   create(data: CreateMetricData): Promise<Metric>;
 
+  /**
+   *
+   * @param filter
+   * @param skip
+   * @param limit
+   * @return Promise<FindWithCountResult> An object containing the array of metrics and the total count
+   */
   findWithCount(
     filter: MetricFilter,
     skip: number,
     limit: number,
   ): Promise<FindWithCountResult>;
 
+  /**
+   *
+   * @param userId
+   * @param type
+   * @param from
+   * @param to
+   * @return Promise<AggregatedDayEntry[]> An array of aggregated day entries
+   */
   aggregateLatestPerDay(
     userId: string,
     type: string,

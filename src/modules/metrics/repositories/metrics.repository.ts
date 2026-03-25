@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage } from 'mongoose';
 import { Metric, MetricDocument } from '../schemas/metric.schema';
@@ -12,12 +12,18 @@ import type {
 
 @Injectable()
 export class MetricsRepository implements IMetricsRepository {
+  private readonly logger = new Logger(MetricsRepository.name);
+
   constructor(
-    @InjectModel(Metric.name) private readonly metricModel: Model<MetricDocument>,
+    @InjectModel(Metric.name)
+    private readonly metricModel: Model<MetricDocument>,
   ) {}
 
   async create(data: CreateMetricData): Promise<Metric> {
-    return this.metricModel.create(data);
+    const start = Date.now();
+    const result = await this.metricModel.create(data);
+    this.logger.debug(`create() completed in ${Date.now() - start}ms`);
+    return result;
   }
 
   async findWithCount(
@@ -25,6 +31,7 @@ export class MetricsRepository implements IMetricsRepository {
     skip: number,
     limit: number,
   ): Promise<FindWithCountResult> {
+    const start = Date.now();
     const [data, total] = await Promise.all([
       this.metricModel
         .find(filter)
@@ -36,6 +43,9 @@ export class MetricsRepository implements IMetricsRepository {
       this.metricModel.countDocuments(filter).exec(),
     ]);
 
+    this.logger.debug(
+      `findWithCount() returned ${data.length}/${total} in ${Date.now() - start}ms`,
+    );
     return { data, total };
   }
 
@@ -45,6 +55,7 @@ export class MetricsRepository implements IMetricsRepository {
     from: Date,
     to: Date,
   ): Promise<AggregatedDayEntry[]> {
+    const start = Date.now();
     const pipeline: PipelineStage[] = [
       {
         $match: {
@@ -68,6 +79,10 @@ export class MetricsRepository implements IMetricsRepository {
     ];
 
     const results = await this.metricModel.aggregate(pipeline).exec();
+
+    this.logger.debug(
+      `aggregateLatestPerDay() returned ${results.length} points in ${Date.now() - start}ms`,
+    );
 
     return results.map((r) => ({
       date: r._id as string,

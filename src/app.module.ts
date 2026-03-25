@@ -3,8 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { mongoDbConfig } from './configs/database/mongo-db/mongo-db.config';
 import { configValidationSchema } from './configs/config.validation';
 import { MongoDbModule } from './configs/database/mongo-db/mongo-db.module';
-import { MetricsModule } from './metrics/metrics.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 import { appConfig } from './configs/app/app.config';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { appConfig } from './configs/app/app.config';
     }),
     MongoDbModule,
     MetricsModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [],
