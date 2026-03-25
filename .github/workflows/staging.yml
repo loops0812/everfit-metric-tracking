@@ -1,0 +1,43 @@
+name: Staging CI/CD
+
+on:
+  push:
+    branches: [staging]
+
+jobs:
+  ci:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm test
+      - run: pnpm test:e2e
+        env:
+          TEST_MONGO_URI: mongodb://localhost:27017/everfit-metrics-test
+
+  deploy:
+    name: Deploy Staging
+    needs: ci
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy env and deploy
+        run: |
+          cp ~/envs/everfit-staging.env .env
+          docker compose down
+          docker compose up -d --build
