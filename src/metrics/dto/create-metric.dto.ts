@@ -28,7 +28,7 @@ export class CreateMetricDto {
 
   @ApiProperty({ example: 100 })
   @IsNumber()
-  @ValidateIf((o) => o.type === MetricType.DISTANCE)
+  @ValidateIf((o: CreateMetricDto) => o.type === MetricType.DISTANCE)
   @Min(0, { message: 'Value must be non-negative for distance metrics' })
   value: number;
 

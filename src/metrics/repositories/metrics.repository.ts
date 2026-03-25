@@ -13,7 +13,8 @@ import type {
 @Injectable()
 export class MetricsRepository implements IMetricsRepository {
   constructor(
-    @InjectModel(Metric.name) private readonly metricModel: Model<MetricDocument>,
+    @InjectModel(Metric.name)
+    private readonly metricModel: Model<MetricDocument>,
   ) {}
 
   async create(data: CreateMetricData): Promise<Metric> {
@@ -67,13 +68,15 @@ export class MetricsRepository implements IMetricsRepository {
       { $sort: { _id: 1 } },
     ];
 
-    const results = await this.metricModel.aggregate(pipeline).exec();
+    const results = await this.metricModel
+      .aggregate<AggregatedDayEntry>(pipeline)
+      .exec();
 
     return results.map((r) => ({
       date: r._id as string,
-      baseValue: r.baseValue as number,
-      value: r.value as number,
-      unit: r.unit as string,
+      baseValue: r.baseValue,
+      value: r.value,
+      unit: r.unit,
     }));
   }
 }

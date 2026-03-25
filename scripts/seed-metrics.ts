@@ -42,14 +42,14 @@ function tempToBase(value: number, unit: string): number {
 }
 
 // ── Helpers ─────────────────────────────────────────────────────
-const USER_IDS = Array.from({ length: 100 }, (_, i) => `user-${i + 1}`);
+const USER_IDS = Array.from({ length: 50 }, (_, i) => `user-${i + 1}`);
 
 function randomItem<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
 function randomDate(): Date {
-  const start = new Date('2024-01-01').getTime();
+  const start = new Date('2025-01-01').getTime();
   const end = new Date('2026-03-24').getTime();
   return new Date(start + Math.random() * (end - start));
 }

@@ -26,6 +26,7 @@ export interface AggregatedDayEntry {
   baseValue: number;
   value: number;
   unit: string;
+  _id?: string; // Optional, depending on how the aggregation result is structured
 }
 
 export interface IMetricsRepository {

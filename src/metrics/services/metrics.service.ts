@@ -62,8 +62,11 @@ export class MetricsService implements IMetricsService {
     }
 
     const skip = (page - 1) * limit;
-    const { data: metrics, total } =
-      await this.metricsRepository.findWithCount({ userId, type }, skip, limit);
+    const { data: metrics, total } = await this.metricsRepository.findWithCount(
+      { userId, type },
+      skip,
+      limit,
+    );
 
     const converter = this.converters[type];
     const data: MetricResult[] = metrics.map((m) =>

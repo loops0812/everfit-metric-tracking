@@ -5,10 +5,11 @@ import { AppModule } from './app.module';
 import { AppConfig, APP_CONFIG_KEY } from './configs/app/app.config';
 import { setupSwagger } from './configs/swagger/swagger.config';
 import { ResponseInterceptor } from './interceptors/response.interceptor';
-import { GlobalExceptionFilter } from './filter/global-exception.filter';
+import { GlobalExceptionFilter } from './filters/global-exception.filter';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const logger = new Logger('Bootstrap');
   const config = app.get(ConfigService).get<AppConfig>(APP_CONFIG_KEY)!;
 
@@ -38,4 +39,4 @@ async function bootstrap() {
     );
   });
 }
-bootstrap();
+void bootstrap();
