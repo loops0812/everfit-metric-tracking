@@ -1,7 +1,9 @@
 import {
   Controller,
   Post,
+  Get,
   Body,
+  Query,
   Inject,
   HttpCode,
   HttpStatus,
@@ -9,7 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { METRICS_SERVICE } from './interfaces/metrics-service.interface';
 import type { IMetricsService } from './interfaces/metrics-service.interface';
-import { CreateMetricDto } from './dto';
+import { CreateMetricDto, QueryMetricDto } from './dto';
 
 @ApiTags('Metrics')
 @Controller('metrics')
@@ -25,5 +27,13 @@ export class MetricsController {
   @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid input.' })
   create(@Body() dto: CreateMetricDto) {
     return this.metricsService.create(dto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'List metrics by user and type with optional unit conversion' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Metrics retrieved successfully.' })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid query parameters.' })
+  findAll(@Query() query: QueryMetricDto) {
+    return this.metricsService.findAll(query);
   }
 }

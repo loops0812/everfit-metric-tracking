@@ -2,12 +2,12 @@ import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Metric, MetricDocument } from '../schemas/metric.schema';
-import { CreateMetricDto } from '../dto';
+import { CreateMetricDto, QueryMetricDto } from '../dto';
 import { MetricType } from 'src/commons/enums/metric-type.enum';
 import { DistanceUnit } from 'src/commons/enums/distance-unit.enum';
 import { TemperatureUnit } from 'src/commons/enums/temperature-unit.enum';
 import type { IUnitConverter } from '../converters/types/unit-converter.interface';
-import { IMetricsService } from '../interfaces/metrics-service.interface';
+import { IMetricsService, MetricResult, PaginatedResult } from '../interfaces/metrics-service.interface';
 import { DISTANCE_CONVERTER, TEMPERATURE_CONVERTER } from '../converters/converter.tokens';
 
 const DISTANCE_UNITS = Object.values(DistanceUnit) as string[];
@@ -44,7 +44,66 @@ export class MetricsService implements IMetricsService {
     });
   }
 
+  async findAll(query: QueryMetricDto): Promise<PaginatedResult<MetricResult>> {
+    const { userId, type, unit, page = 1, limit = 20 } = query;
+
+    if (unit) {
+      this.validateUnit(type, unit);
+    }
+
+    const filter = { userId, type };
+    const skip = (page - 1) * limit;
+
+    const [metrics, total] = await Promise.all([
+      this.metricModel
+        .find(filter)
+        .sort({ date: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.metricModel.countDocuments(filter).exec(),
+    ]);
+
+    const converter = this.converters[type];
+    const data: MetricResult[] = metrics.map((m) => this.toMetricResult(m, converter, unit));
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   // ── Helpers ──────────────────────────────────────────────────
+
+  private toMetricResult(
+    metric: Metric & { createdAt?: Date },
+    converter: IUnitConverter<any>,
+    targetUnit?: string,
+  ): MetricResult {
+    if (targetUnit) {
+      return {
+        userId: metric.userId,
+        type: metric.type,
+        value: converter.fromBase(metric.baseValue, targetUnit),
+        unit: targetUnit,
+        date: metric.date,
+        createdAt: metric.createdAt,
+      };
+    }
+
+    return {
+      userId: metric.userId,
+      type: metric.type,
+      value: metric.value,
+      unit: metric.unit,
+      date: metric.date,
+      createdAt: metric.createdAt,
+    };
+  }
 
   private getValidUnits(type: MetricType): string[] {
     return type === MetricType.DISTANCE ? DISTANCE_UNITS : TEMPERATURE_UNITS;
