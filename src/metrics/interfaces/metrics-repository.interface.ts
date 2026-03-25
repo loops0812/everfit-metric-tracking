@@ -30,17 +30,17 @@ export interface AggregatedDayEntry {
 
 export interface IMetricsRepository {
   /**
-   * 
-   * @param data 
+   *
+   * @param data
    * @return Promise<Metric> The created metric document
    */
   create(data: CreateMetricData): Promise<Metric>;
 
   /**
-   * 
-   * @param filter 
-   * @param skip 
-   * @param limit 
+   *
+   * @param filter
+   * @param skip
+   * @param limit
    * @return Promise<FindWithCountResult> An object containing the array of metrics and the total count
    */
   findWithCount(
@@ -50,11 +50,11 @@ export interface IMetricsRepository {
   ): Promise<FindWithCountResult>;
 
   /**
-   * 
-   * @param userId 
-   * @param type 
-   * @param from 
-   * @param to 
+   *
+   * @param userId
+   * @param type
+   * @param from
+   * @param to
    * @return Promise<AggregatedDayEntry[]> An array of aggregated day entries
    */
   aggregateLatestPerDay(

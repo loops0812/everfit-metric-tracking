@@ -1,4 +1,9 @@
-import { Injectable, Inject, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { Metric } from '../schemas/metric.schema';
 import { CreateMetricDto, QueryMetricDto, ChartQueryDto } from '../dto';
 import { MetricType } from 'src/commons/enums/metric-type.enum';
@@ -69,8 +74,11 @@ export class MetricsService implements IMetricsService {
     }
 
     const skip = (page - 1) * limit;
-    const { data: metrics, total } =
-      await this.metricsRepository.findWithCount({ userId, type }, skip, limit);
+    const { data: metrics, total } = await this.metricsRepository.findWithCount(
+      { userId, type },
+      skip,
+      limit,
+    );
 
     this.logger.log(
       `Listed ${type} metrics for user=${userId}: ${metrics.length}/${total} (page=${page}, limit=${limit})`,

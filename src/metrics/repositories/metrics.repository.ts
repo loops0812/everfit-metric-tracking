@@ -15,7 +15,8 @@ export class MetricsRepository implements IMetricsRepository {
   private readonly logger = new Logger(MetricsRepository.name);
 
   constructor(
-    @InjectModel(Metric.name) private readonly metricModel: Model<MetricDocument>,
+    @InjectModel(Metric.name)
+    private readonly metricModel: Model<MetricDocument>,
   ) {}
 
   async create(data: CreateMetricData): Promise<Metric> {

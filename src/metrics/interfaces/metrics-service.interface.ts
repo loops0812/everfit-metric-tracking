@@ -37,22 +37,22 @@ export interface ChartResult {
 
 export interface IMetricsService {
   /**
-   * 
-   * @param dto 
+   *
+   * @param dto
    * @return Promise<Metric> The created metric document
    */
   create(dto: CreateMetricDto): Promise<Metric>;
 
   /**
-   * 
-   * @param query 
+   *
+   * @param query
    * @return Promise<PaginatedResult<MetricResult>> An object containing the array of metrics and pagination info
    */
   findAll(query: QueryMetricDto): Promise<PaginatedResult<MetricResult>>;
 
   /**
-   * 
-   * @param query 
+   *
+   * @param query
    * @return Promise<ChartResult> An object containing the chart data for the specified query
    */
   getChartData(query: ChartQueryDto): Promise<ChartResult>;
