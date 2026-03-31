@@ -23,11 +23,11 @@ services:
     command: >
       access tcp 
       --hostname mongo.longngphuc.id.vn 
-      --url 0.0.0.0:27017 
+      --url 0.0.0.0:27027 
       --service-token-id ${CF_ACCESS_CLIENT_ID} 
       --service-token-secret ${CF_ACCESS_CLIENT_SECRET}
-    expose:
-      - '27017'
+    ports:
+      - "27027:27027"
 
   # mongo:
   #   image: mongo:7
