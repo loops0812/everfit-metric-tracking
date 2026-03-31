@@ -26,8 +26,8 @@ services:
       --url 0.0.0.0:27017 
       --service-token-id ${CF_ACCESS_CLIENT_ID} 
       --service-token-secret ${CF_ACCESS_CLIENT_SECRET}
-    ports:
-      - "27017:27017"
+    expose:
+      - '27017'
 
   # mongo:
   #   image: mongo:7
