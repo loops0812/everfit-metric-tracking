@@ -39,5 +39,6 @@ jobs:
       - name: Copy env and deploy
         run: |
           cp ~/envs/everfit-staging.env .env
+          cp ~/envs/mongo.env mongo.env
           docker compose down
           docker compose up -d --build

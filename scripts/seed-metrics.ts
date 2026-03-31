@@ -14,7 +14,7 @@
 import { MongoClient } from 'mongodb';
 
 // ── Config ──────────────────────────────────────────────────────
-const MONGO_URI = process.env.MONGO_URI ?? 'mongodb://localhost:27017';
+const MONGO_URI = process.env.MONGO_URI ?? 'mongodb://HomeLab:Homelab%40Server-21@localhost:27017';
 const DB_NAME = process.env.MONGO_DB_NAME ?? 'everfit-metrics';
 const TOTAL = Number(process.env.TOTAL_ROWS ?? 10_000_000);
 const BATCH = Number(process.env.BATCH_SIZE ?? 50_000);

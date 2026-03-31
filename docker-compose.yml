@@ -18,11 +18,16 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: mongo-bridge
     restart: unless-stopped
-    command: access tcp --hostname ${MONGO_HOST:-mongo:27017} --url http://0.0.0.0:27017
     env_file:
-      - .env
+      - mongo.env
+    command: >
+      access tcp 
+      --hostname mongo.longngphuc.id.vn 
+      --url 0.0.0.0:27017 
+      --service-token-id ${CF_ACCESS_CLIENT_ID} 
+      --service-token-secret ${CF_ACCESS_CLIENT_SECRET}
     ports:
-      - 27027:27017
+      - "27017:27017"
 
   # mongo:
   #   image: mongo:7
