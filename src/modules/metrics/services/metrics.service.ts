@@ -122,7 +122,8 @@ export class MetricsService implements IMetricsService {
     }
 
     const from = this.parsePeriodStart(period);
-    const to = new Date();
+    from.setUTCHours(0, 0, 0, 0);
+    const to = new Date()
 
     const results = await this.dailyMetricRepository.findByRange(
       userId,
@@ -226,7 +227,8 @@ export class MetricsService implements IMetricsService {
         break;
     }
 
-    return now;
+    // return start of day for consistency with daily metrics
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
   }
 
   private toMetricResult(
