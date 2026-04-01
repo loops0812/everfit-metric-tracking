@@ -79,17 +79,12 @@ export class DailyMetricRepository implements IDailyMetricRepository {
     to: Date,
   ): Promise<AggregatedDayEntry[]> {
     const start = Date.now();
-    // must startOfDay to match the stored daily metrics
-    const startOfDayFrom = new Date(from);
-    startOfDayFrom.setUTCHours(0, 0, 0, 0);
-    const startOfDayTo = new Date(to);
-    startOfDayTo.setUTCHours(0, 0, 0, 0);
     
     const results = await this.dailyMetricModel
       .find({
         userId,
         type,
-        date: { $gte: startOfDayFrom, $lte: startOfDayTo },
+        date: { $gte: from, $lte: to },
       })
       .sort({ date: 1 })
       .lean()

@@ -2,7 +2,7 @@
 
 A RESTful API for tracking health & fitness metrics (distance and temperature) with automatic unit conversion, pre-computed chart data, and 10M-row performance testing.
 
-> **Live Demo:** [https://everfit.panochess.edu.vn/api-docs](https://everfit.panochess.edu.vn/api-docs)
+> **Live Demo:** [https://salon-penn-captain-dimensions.trycloudflare.com/api-docs](https://salon-penn-captain-dimensions.trycloudflare.com/api-docs) (Swagger UI with interactive docs)
 
 ---
 
@@ -10,9 +10,9 @@ A RESTful API for tracking health & fitness metrics (distance and temperature) w
 
 | Resource | URL / Path |
 |----------|-----------|
-| **Swagger UI** | [https://everfit.panochess.edu.vn/api-docs](https://everfit.panochess.edu.vn/api-docs) |
-| **API Base** | `https://everfit.panochess.edu.vn/api` |
-| **Health Check** | [https://everfit.panochess.edu.vn/health](https://everfit.panochess.edu.vn/api/health) |
+| **Swagger UI** | [https://salon-penn-captain-dimensions.trycloudflare.com/api-docs](https://salon-penn-captain-dimensions.trycloudflare.com/api-docs) |
+| **API Base** | `https://salon-penn-captain-dimensions.trycloudflare.com/api` |
+| **Health Check** | [https://salon-penn-captain-dimensions.trycloudflare.com/api/health](https://salon-penn-captain-dimensions.trycloudflare.com/api/health) |
 | **Trade-Offs** | [TRADE_OFFS.md](./TRADE_OFFS.md) |
 | **Presentation** | [PRESENTATION.md](./PRESENTATION.md) |
 
