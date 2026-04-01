@@ -11,23 +11,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    # depends_on:
-    #   - mongo
+    networks:
+      everfit:
+        ipv4_address: 172.23.0.11 
 
-  mongo-bridge:
-    image: cloudflare/cloudflared:latest
-    container_name: mongo-bridge
-    restart: unless-stopped
-    env_file:
-      - mongo.env
-    command: >
-      access tcp 
-      --hostname mongo.longngphuc.id.vn 
-      --url 0.0.0.0:27027 
-      --service-token-id ${CF_ACCESS_CLIENT_ID} 
-      --service-token-secret ${CF_ACCESS_CLIENT_SECRET}
-    ports:
-      - "27027:27027"
+  # mongo-bridge:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: mongo-bridge
+  #   restart: unless-stopped
+  #   env_file:
+  #     - mongo.env
+  #   command: >
+  #     access tcp 
+  #     --hostname mongo.longngphuc.id.vn 
+  #     --url 0.0.0.0:27027 
+  #     --service-token-id ${CF_ACCESS_CLIENT_ID} 
+  #     --service-token-secret ${CF_ACCESS_CLIENT_SECRET}
+  #   ports:
+  #     - "27027:27027"
 
   # mongo:
   #   image: mongo:7
@@ -40,10 +41,13 @@ services:
   #     interval: 5s
   #     timeout: 5s
   #     retries: 5
+  #   networks:
+  #     everfit:
+  #       ipv4_address: 172.23.0.12
 
 # volumes:
 #   mongo-data:
 
-# networks:
-#   default:
-#     driver: bridge
+networks:
+  everfit:
+    driver: bridge
